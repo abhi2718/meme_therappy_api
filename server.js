@@ -1,36 +1,31 @@
 const express = require('express'),
       port = 8080,
-      stream = require('getstream');
+      StreamChat = require('stream-chat').StreamChat,
       app = express();
+
       app.use(express.json());
-      const client = stream.connect(
-        'umn9bfznh9ay',
-        'ja9qa2ac8tmendx3sn2jfggg9pnfvh7mngk5pr6w9q3dr9e8kmx2946284bd64nz',
-        '1210354',
-        { location: 'Singapore' },
-      );
+      const serverClient = StreamChat.getInstance('naxjxu3wf5ez','6fpupw3xpznyjq5b79c2c7yu64etkpxzzsp6v8tg72z8vemmay72rsrru96q4jxa');
 
       app.get('/', async(req, res)=> {
-        console.log(token);
         res.status(200).json({
             success: true,
             message: 'API Start'
         });
       });
 
-      app.post('/create/user', async(req, res)=> {
-        const {name,occupation,gender,id}=req.body;
+      app.post('/create', async(req, res)=> {
+        const {name,id}=req.body;
+        const token = serverClient.createToken(id);
         try{
-          const user= await client.user(id).create({
+          const response = await serverClient.upsertUser({
+            id,
             name,
-            occupation,
-            gender,
-          });
+            role:'user'
+          })
           res.status(200).json({
             success: true,
-            token: user.token,
-            id: user.id,
-            data: user.data,
+            ...response.users[`${id}`],
+            token: token
           });
         }catch(err){
            console.log(err);
@@ -41,106 +36,20 @@ const express = require('express'),
         }
       });
 
-      app.get('/users/:id', async(req, res)=> {
-          const user = await client.user(req.params.id).get();
-          res.status(200).json({
-            success: true,
-            token: user.token,
-            id: user.id,
-            data: user.data,
-          });
-      })
-      app.get('/create/feedgroup/:id',async(req, res)=> {
+      app.get('/token/:id', async(req, res)=> {
         try{
-          const user = await client.feed('public', req.params.id);
-          console.log(user);
+          const token = serverClient.createToken(req.params.id);
           res.status(200).json({
             success: true,
-            token: user.token,
-            id: user.id,
-            slug: user.slug,
-            userId: user.userId,
-            feedUrl: user.feedUrl,
-            feedTogether: user.feedTogether,
-            notificationChannel: user.notificationChannel,
+            token: token,
           });
-        }catch(err){
+        }catch(err){  
           console.log(err);
-          res.status(400).json({
+           res.status(400).json({
             success: false,
-            message: 'Invalid request parameters'
+            message: 'some thing went wrong!',
           });
         }
       })
-
-      app.post('/create/feed/',async(req, res)=> {  
-        try{
-          const {userId,userToken}=req.body;
-          const user = client.feed('user', userId, userToken);
-          const activity = {
-            actor:userId,
-            verb: "post",
-            object: "text:9",
-            foreign_id: userId,
-            time: new Date(),
-            tweet: 'message',
-            popularity: 1,
-            to: ["global:all"],
-         };
-          const feed=await user.addActivity(activity);
-          res.status(200).json({
-            success: true,
-            feed,
-          });
-        }catch(err){
-          console.log(err);
-          res.status(400).json({
-            success: false,
-            message: 'Invalid request parameters'
-          });
-        }
-      })
-      app.post('/getfeed',async(req, res)=> {
-        try{
-          const {userId,userToken}=req.body;
-          const user =  client.feed('global', userId,);
-          user.get()
-          .then((data)=>{
-            console.log(data);
-            res.status(200).json({  
-              success: true,
-              feed:data.results
-            });
-          })
-          .catch((error)=>{
-            console.log(error);
-            res.status(400).json({
-              success: false,
-              message: 'Invalid request parameters'
-            });
-          });
-        }catch(err){
-          console.log(err);
-          res.status(400).json({
-            success: false,
-            message: 'Invalid request parameters'
-          });
-        }
-      })
-      
-      app.post('/flow',async(req, res)=>{
-        const {userId,userToken,followId}=req.body;
-        try{
-          const user= client.feed('user', userId, userToken);
-          const response= await user.follow('user', followId);
-          console.log('response',response);
-          res.status(200).json({
-            success: true,
-          })
-        }catch(error){
-          res.status(400).json({
-            success: false,
-          })
-        }
-      })
+    
       app.listen(port,()=> console.log(`listen on ${port}`));
